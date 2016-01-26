@@ -8,8 +8,10 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
   
   config :name_replace, :validate => :string, :default => nil
   config :name_replace_with, :validate => :string, :default => nil
+  config :key_pad, :validate => :string, :default => nil
   config :field_target, :validate => :string, :default => "field_target"
   config :skip_fields, :validate => :array, :default => []
+  config :key_as_name, :validate => :boolean, :default => false
 
   public
   def register
@@ -29,6 +31,8 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
     end
 
     #count = 0
+
+    @key_pad = "" if @key_pad == nil
 
     data.each do |k,v|
       next if (@skip_fields != nil && @skip_fields.include?(k))
@@ -58,10 +62,15 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
             name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
             new_event = LogStash::Event.new(root.clone)
             new_event[@field_target] = k
-            #new_event["name"] = name
-            hash.each do |key,value|
-              new_event[name+"_"+key] = value
-              #new_event[key] = value
+            if @key_as_name
+              new_event[@key_pad+"name"] = name
+              hash.each do |key,value|
+                new_event[@key_pad+key] = value
+              end
+            else
+              hash.each do |key,value|
+                new_event[name+"_"+key] = value
+              end
             end
             #count++
             filter_matched(new_event)
