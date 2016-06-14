@@ -5,13 +5,13 @@ require "logstash/namespace"
 class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
 
   config_name "sls_flatten"
-  
+
   config :name_replace, :validate => :string, :default => nil
   config :name_replace_with, :validate => :string, :default => nil
   config :key_pad, :validate => :string, :default => nil
   config :field_target, :validate => :string, :default => "field_target"
   config :skip_fields, :validate => :array, :default => []
-  config :key_as_name, :validate => :boolean, :default => false
+  config :keep_name, :validate => :boolean, :default => false
 
   public
   def register
@@ -30,7 +30,7 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
       end
     end
 
-    #count = 0
+    count = 0
 
     @key_pad = "" if @key_pad == nil
 
@@ -38,51 +38,81 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
       next if (@skip_fields != nil && @skip_fields.include?(k))
 
       if v.is_a? Array
-        v.each do |x|
-          if x.is_a? Hash
-            if x.key?("name")
-              name = x["name"]
-              name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
-              x.delete("name")
-              new_event = LogStash::Event.new(root.clone)
-              new_event[@field_target] = k
-              x.each do |key,value|
-                new_event[name+"_"+key] = value
+
+        v.each do |hash|
+          if hash.is_a? Hash
+            new_event = LogStash::Event.new(root.clone)
+            new_event[@field_target] = k
+
+            vcount = 0
+            if @keep_name
+              hash.each do |key,value|
+                if (k != "gauges" || value.is_a?(Numeric)) # Hard coded for now.
+                  new_event[@key_pad+key] = value
+                  vcount += 1
+                end
               end
-              #count++
+            elsif hash.key?("name")
+              name = hash["name"]
+              name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
+              hash.delete("name")
+              hash.each do |key,value|
+                new_event[name+"_"+key] = value
+                vcount += 1
+              end
+            end
+
+            if vcount > 0
+              count += 1
               filter_matched(new_event)
               yield new_event
             end
           end
         end
+
       elsif v.is_a? Hash
+
         v.each do |key_name,hash|
           if hash.is_a? Hash
             name = String.new(key_name)
             name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
             new_event = LogStash::Event.new(root.clone)
             new_event[@field_target] = k
-            if @key_as_name
+
+            vcount = 0
+            if @keep_name
               new_event[@key_pad+"name"] = name
               hash.each do |key,value|
-                new_event[@key_pad+key] = value
+                if (k != "gauges" || value.is_a?(Numeric)) # Hard coded for now.
+                  new_event[@key_pad+key] = value
+                  vcount += 1
+                end
               end
             else
               hash.each do |key,value|
                 new_event[name+"_"+key] = value
+                vcount += 1
               end
             end
-            #count++
-            filter_matched(new_event)
-            yield new_event
+
+            if vcount > 0
+              count += 1
+              filter_matched(new_event)
+              yield new_event
+            end
           end
         end
       end
+
     end
 
     # Cancel the original event, if other events have been created.
     event.cancel #if count > 0
 
   end # def filter
+
+  private
+  def stuff
+  end # def stuff
 
 end # class LogStash::Filters::Example
