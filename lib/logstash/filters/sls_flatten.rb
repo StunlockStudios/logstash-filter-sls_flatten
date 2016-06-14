@@ -11,7 +11,7 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
   config :key_pad, :validate => :string, :default => nil
   config :field_target, :validate => :string, :default => "field_target"
   config :skip_fields, :validate => :array, :default => []
-  config :keep_name, :validate => :boolean, :default => false
+  #config :keep_name, :validate => :boolean, :default => false
 
   public
   def register
@@ -45,21 +45,9 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
             new_event[@field_target] = k
 
             vcount = 0
-            if @keep_name
-              hash.each do |key,value|
-                if (k != "gauges" || value.is_a?(Numeric)) # Hard coded for now.
-                  new_event[@key_pad+key] = value
-                  vcount += 1
-                end
-              end
-            elsif hash.key?("name")
-              name = hash["name"]
-              name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
-              hash.delete("name")
-              hash.each do |key,value|
-                new_event[name+"_"+key] = value
-                vcount += 1
-              end
+            hash.each do |key,value|
+              new_event[@key_pad+key] = value
+              vcount += 1
             end
 
             if vcount > 0
@@ -80,19 +68,10 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
             new_event[@field_target] = k
 
             vcount = 0
-            if @keep_name
-              new_event[@key_pad+"name"] = name
-              hash.each do |key,value|
-                if (k != "gauges" || value.is_a?(Numeric)) # Hard coded for now.
-                  new_event[@key_pad+key] = value
-                  vcount += 1
-                end
-              end
-            else
-              hash.each do |key,value|
-                new_event[name+"_"+key] = value
-                vcount += 1
-              end
+            new_event[@key_pad+"name"] = name
+            hash.each do |key,value|
+              new_event[@key_pad+key] = value
+              vcount += 1
             end
 
             if vcount > 0
