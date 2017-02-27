@@ -42,11 +42,11 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
         v.each do |hash|
           if hash.is_a? Hash
             new_event = LogStash::Event.new(root.clone)
-            new_event[@field_target] = k
+            new_event.set(@field_target, k)
 
             vcount = 0
             hash.each do |key,value|
-              new_event[@key_pad+key] = value
+              new_event.set(@key_pad+key, value)
               vcount += 1
             end
 
@@ -65,12 +65,12 @@ class LogStash::Filters::SLSFlatten < LogStash::Filters::Base
             name = String.new(key_name)
             name.gsub! @name_replace, @name_replace_with if (@name_replace && @name_replace_with)
             new_event = LogStash::Event.new(root.clone)
-            new_event[@field_target] = k
+            new_event.set(@field_target, k)
 
             vcount = 0
-            new_event[@key_pad+"name"] = name
+            new_event.set(@key_pad+"name", name)
             hash.each do |key,value|
-              new_event[@key_pad+key] = value
+              new_event.set(@key_pad+key, value)
               vcount += 1
             end
 
